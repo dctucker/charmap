@@ -35,6 +35,8 @@ proc cursorTo(row, col: int) =
   stdout.write("\27[", $(row + 3), ";", $(2 + (1 + col) * 4), "f")
 
 proc display_range(r: HSlice) =
+  let base = r.a div 256 * 256
+
   # clear screen and tabs
   stdout.write("\27[0m\27[2J\n\n")
   stdout.write("\27[3g")
@@ -42,7 +44,7 @@ proc display_range(r: HSlice) =
   # set tabs and return home
   for x in 1..16:
     stdout.write("\27[", $(2 + x * 4), "G\27H")
-  stdout.write("\27[H")
+  stdout.write("\27[H\27[34m", (base shr 8).toHex(3), "\27[0m")
 
   # column headers
   stdout.write("\27[34m")
@@ -56,7 +58,7 @@ proc display_range(r: HSlice) =
 
     # row of runes
     for x in 0..15:
-      let rune = Rune(x + 16 * y);
+      let rune = Rune(base + x + 16 * y);
       stdout.write("\t", sym(rune))
     stdout.write("\n")
 
@@ -79,6 +81,11 @@ proc draw(cm: Charmap) =
   cm.rune.describe()
   cursorTo(cm.row, cm.col)
 
+proc redraw(cm: Charmap) =
+  displayRange(cm.base..(cm.base+255))
+  cursorTo(0,0)
+  cm.draw()
+
 proc up(cm: Charmap) =
   if cm.row > 0:
     cm.row -= 1
@@ -98,6 +105,16 @@ proc right(cm: Charmap) =
   if cm.col < 15:
     cm.col += 1
   cm.draw()
+
+proc pageup(cm: Charmap) =
+  if cm.base > 0:
+    cm.base -= 256
+  cm.redraw()
+
+proc pagedown(cm: Charmap) =
+  if cm.base < 0x20000:
+    cm.base += 256
+  cm.redraw()
 
 proc getUserInput*(cm: Charmap): string =
   var first = true
@@ -119,6 +136,14 @@ proc getUserInput*(cm: Charmap): string =
         of 'C': cm.right()
         of 'D': cm.left()
         #of 'H': cm.home()
+        of '5':
+          case getch()
+          of '~': cm.pageup()
+          else: discard
+        of '6':
+          case getch()
+          of '~': cm.pagedown()
+          else: discard
         else: discard
       of '\27': # double escape cancels
         result = ""
@@ -140,7 +165,5 @@ when isMainModule:
   #  echo r.a.hex, "-", r.b.hex, "\t", blockNames[i]
 
   let cm = Charmap()
-  displayRange(0..255)
-  cursorTo(0,0)
-  cm.draw()
+  cm.redraw()
   discard cm.getUserInput()
