@@ -7,6 +7,9 @@ import unicodedb
 import unicodedb/scripts
 import unicodedb/blocks_data
 
+const PAGE_SIZE = 256
+const MAX_BASE = 0xFFF00
+
 type
   Charmap = ref object
     base: int
@@ -35,7 +38,7 @@ proc cursorTo(row, col: int) =
   stdout.write("\27[", $(row + 3), ";", $(2 + (1 + col) * 4), "f")
 
 proc display_range(r: HSlice) =
-  let base = r.a div 256 * 256
+  let base = r.a div PAGE_SIZE * PAGE_SIZE
 
   # clear screen and tabs
   stdout.write("\27[0m\27[2J\n\n")
@@ -67,7 +70,7 @@ func rune(cm: Charmap): Rune =
 
 proc describe(rune: Rune) =
   stdout.write(
-    "\27[34m",
+    "\27[34;4m",
     "\\u", ord(rune).hex(), "\27[0m ",
     "\27[40;1m ",
     sym(rune),
@@ -76,44 +79,94 @@ proc describe(rune: Rune) =
     "\27[K",
   )
 
+proc blocks(cm: Charmap): seq[string] =
+  let a = cm.base
+  let b = cm.base + 255
+  for i in 0..<blockRanges.len:
+    let r = blockRanges[i]
+    if a <= r.b and r.a <= b:
+      result.add blockNames[i]
+
+proc draw_blocks(cm: Charmap) =
+  stdout.write("\27[34m")
+  for (i, blk) in cm.blocks.pairs:
+    if i mod 2 == 1:
+      stdout.write(", ")
+    stdout.write(blk)
+    if i mod 2 == 1:
+      stdout.write("\n\t")
+  stdout.write("\27[0m")
+
 proc draw(cm: Charmap) =
   cursorTo(17, 0)
   cm.rune.describe()
+  cursorTo(18, 0)
+  cm.draw_blocks()
   cursorTo(cm.row, cm.col)
 
 proc redraw(cm: Charmap) =
+  stdout.write("\27[?25l")
   displayRange(cm.base..(cm.base+255))
   cursorTo(0,0)
   cm.draw()
+  stdout.write("\27[?25h")
 
 proc up(cm: Charmap) =
   if cm.row > 0:
     cm.row -= 1
+  elif cm.base > 0:
+    cm.row = 15
+    cm.base -= PAGE_SIZE
+    cm.redraw()
+    return
   cm.draw()
 
 proc down(cm: Charmap) =
   if cm.row < 15:
     cm.row += 1
+  elif cm.base < MAX_BASE:
+    cm.row = 0
+    cm.base += PAGE_SIZE
+    cm.redraw()
+    return
   cm.draw()
 
 proc left(cm: Charmap) =
   if cm.col > 0:
     cm.col -= 1
+  elif cm.row > 0:
+    cm.col = 15
+    cm.row -= 1
+  elif cm.base > 0:
+    cm.base -= PAGE_SIZE
+    cm.col = 15
+    cm.row = 15
+    cm.redraw()
+    return
   cm.draw()
 
 proc right(cm: Charmap) =
   if cm.col < 15:
     cm.col += 1
+  elif cm.row < 15:
+    cm.col = 0
+    cm.row += 1
+  elif cm.base < MAX_BASE:
+    cm.base += PAGE_SIZE
+    cm.col = 0
+    cm.row = 0
+    cm.redraw()
+    return
   cm.draw()
 
 proc pageup(cm: Charmap) =
   if cm.base > 0:
-    cm.base -= 256
+    cm.base -= PAGE_SIZE
   cm.redraw()
 
 proc pagedown(cm: Charmap) =
-  if cm.base < 0x20000:
-    cm.base += 256
+  if cm.base < MAX_BASE:
+    cm.base += PAGE_SIZE
   cm.redraw()
 
 proc getUserInput*(cm: Charmap): string =
