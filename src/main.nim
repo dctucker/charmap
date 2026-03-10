@@ -1,5 +1,5 @@
 from std/terminal import getch
-import charmap
+import ./charmap
 
 proc searchMode(cm: Charmap) =
   var needle = ""

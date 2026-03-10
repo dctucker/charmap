@@ -1,14 +1,16 @@
 # This is just an example to get you started. A typical binary package
 # uses this file as the main entry point of the application.
-import strutils
-import unicode
-import unicodedb
-import unicodedb/blocks_data
-
-import ./[
-  c1,
-  search,
-]
+import
+  std/[
+    strutils,
+    unicode,
+  ],
+  unicodedb,
+  unicodedb/blocks_data,
+  ./[
+    c1,
+    search,
+  ]
 
 const PAGE_SIZE* = 256
 const MAX_BASE* = 0xFFF00
@@ -18,6 +20,7 @@ type
     base*: int
     row*: int
     col*: int
+    runes*: seq[Rune]
 
 func sym(rune: Rune): string =
   let i = rune.ord()
@@ -35,7 +38,7 @@ func sym(rune: Rune): string =
 func description(rune: Rune): string =
   let i = rune.ord
   case i
-  of 0x20:
+  of 0x00..0x1F:
     Rune(i + 0x2400).name().split(" ")[2..^1].join(" ")
   of 0x7F:
     Rune(0x2421).name().split(" ")[2..^1].join(" ")
@@ -53,8 +56,7 @@ func hex(v: int): string =
 proc cursorTo*(row, col: int) =
   stdout.write("\27[", $(row + 3), ";", $(2 + (1 + col) * 4), "f")
 
-proc display_range(r: HSlice) =
-  let base = r.a div PAGE_SIZE * PAGE_SIZE
+proc display_runes(cm: Charmap) =
 
   # clear screen and tabs
   stdout.write("\27[0m\27[2J\n\n")
@@ -63,7 +65,7 @@ proc display_range(r: HSlice) =
   # set tabs and return home
   for x in 1..16:
     stdout.write("\27[", $(2 + x * 4), "G\27H")
-  stdout.write("\27[H\27[34m", (base shr 8).toHex(3), "\27[0m")
+  stdout.write("\27[H\27[34m", (cm.base shr 8).toHex(3), "\27[0m")
 
   # column headers
   stdout.write("\27[34m")
@@ -77,7 +79,7 @@ proc display_range(r: HSlice) =
 
     # row of runes
     for x in 0..15:
-      let rune = Rune(base + x + 16 * y);
+      let rune = cm.runes[x + 16 * y]
       stdout.write("\t", sym(rune))
     stdout.write("\n")
 
@@ -136,9 +138,16 @@ proc draw*(cm: Charmap) =
   cm.draw_blocks()
   cursorTo(cm.row, cm.col)
 
+proc populate(cm: Charmap, r: HSlice) =
+  cm.base = r.a div PAGE_SIZE * PAGE_SIZE
+  cm.runes = @[]
+  for i in r:
+    cm.runes.add Rune(i)
+
 proc redraw*(cm: Charmap) =
   stdout.write("\27[?25l")
-  displayRange(cm.base..(cm.base+255))
+  cm.populate(cm.base..(cm.base+255))
+  cm.display_runes()
   cursorTo(0,0)
   cm.draw()
   stdout.write("\27[?25h")

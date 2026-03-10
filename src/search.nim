@@ -1,6 +1,9 @@
-import strutils
-import sequtils
-import unicodedb/names_data
+import
+  std/[
+    sequtils,
+    strutils,
+  ],
+  unicodedb/names_data
 
 proc find_words(str: string): seq[int] =
   let needle = str.toUpperAscii().map(proc(x: char): int = x.ord())
