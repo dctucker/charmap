@@ -5,7 +5,7 @@ author        = "Casey Tucker"
 description   = "Character map for terminal"
 license       = "MIT"
 srcDir        = "src"
-bin           = @["charmap"]
+namedBin      = toTable {"main": "charmap"}
 
 
 # Dependencies

@@ -1,24 +1,23 @@
 # This is just an example to get you started. A typical binary package
 # uses this file as the main entry point of the application.
-from std/terminal import getch
 import strutils
-import sequtils
 import unicode
 import unicodedb
-import unicodedb/scripts
 import unicodedb/blocks_data
-import unicodedb/names_data
 
-import c1
+import ./[
+  c1,
+  search,
+]
 
-const PAGE_SIZE = 256
-const MAX_BASE = 0xFFF00
+const PAGE_SIZE* = 256
+const MAX_BASE* = 0xFFF00
 
 type
-  Charmap = ref object
-    base: int
-    row: int
-    col: int
+  Charmap* = ref object
+    base*: int
+    row*: int
+    col*: int
 
 func sym(rune: Rune): string =
   let i = rune.ord()
@@ -51,7 +50,7 @@ func hex(v: int): string =
   else:
     return v.toHex(5)
 
-proc cursorTo(row, col: int) =
+proc cursorTo*(row, col: int) =
   stdout.write("\27[", $(row + 3), ";", $(2 + (1 + col) * 4), "f")
 
 proc display_range(r: HSlice) =
@@ -81,6 +80,22 @@ proc display_range(r: HSlice) =
       let rune = Rune(base + x + 16 * y);
       stdout.write("\t", sym(rune))
     stdout.write("\n")
+
+proc search*(cm: Charmap, needle: string) =
+  let found = find_runes(needle)
+
+  cursorTo(0, 0)
+  var n = 0
+  for i in 0..<16:
+    stdout.write("\27[2K")
+    for j in 0..<16:
+      n = i * 16 + j
+      if n >= found.len:
+        break
+      stdout.write(" ", Rune(found[n]), "\t")
+    stdout.write("\n\t")
+
+  cursorTo(0, 0)
 
 func rune(cm: Charmap): Rune =
   return Rune(cm.base + cm.row * 16 + cm.col)
@@ -114,201 +129,19 @@ proc draw_blocks(cm: Charmap) =
       stdout.write("\n\t")
   stdout.write("\27[0m")
 
-proc draw(cm: Charmap) =
+proc draw*(cm: Charmap) =
   cursorTo(17, 0)
   cm.rune.describe()
   cursorTo(18, 0)
   cm.draw_blocks()
   cursorTo(cm.row, cm.col)
 
-proc redraw(cm: Charmap) =
+proc redraw*(cm: Charmap) =
   stdout.write("\27[?25l")
   displayRange(cm.base..(cm.base+255))
   cursorTo(0,0)
   cm.draw()
   stdout.write("\27[?25h")
 
-proc find_word(str: string): seq[int] =
-  let needle = str.toUpperAscii().map(proc(x: char): int = x.ord())
-
-  var i = 0
-  var offset = 0
-  while i < wordsData.len:
-    if wordsData[i] == 0:
-      inc i
-      offset = i
-      continue
-    var found = true
-    for j in 0..<needle.len:
-      if wordsData[i + j] != needle[j]:
-        found = false
-        i += j + 1
-        break
-    if found:
-      result.add wordsOffsets.find(offset)
-      i += needle.len
-
-proc search(str: string): seq[int] =
-  let words = find_word(str)
-
-  for n in 0..<namesTable.len.int32:
-    if namesTable[n] in words:
-      var ii: int32 = -1
-      for i in 0..<namesIndices.len.int32:
-        let ni = namesIndices[i]
-        if ni == -1:
-          continue
-        if ni == n:
-          break
-        if ni > n:
-          let blk = namesOffsets.find((ii div blockSize).uint8)
-          result.add blk * blockSize + (ii mod blockSize)
-          break
-        ii = i
-
-# input
-proc up(cm: Charmap) =
-  if cm.row > 0:
-    cm.row -= 1
-  elif cm.base > 0:
-    cm.row = 15
-    cm.base -= PAGE_SIZE
-    cm.redraw()
-    return
-  cm.draw()
-
-proc down(cm: Charmap) =
-  if cm.row < 15:
-    cm.row += 1
-  elif cm.base < MAX_BASE:
-    cm.row = 0
-    cm.base += PAGE_SIZE
-    cm.redraw()
-    return
-  cm.draw()
-
-proc left(cm: Charmap) =
-  if cm.col > 0:
-    cm.col -= 1
-  elif cm.row > 0:
-    cm.col = 15
-    cm.row -= 1
-  elif cm.base > 0:
-    cm.base -= PAGE_SIZE
-    cm.col = 15
-    cm.row = 15
-    cm.redraw()
-    return
-  cm.draw()
-
-proc right(cm: Charmap) =
-  if cm.col < 15:
-    cm.col += 1
-  elif cm.row < 15:
-    cm.col = 0
-    cm.row += 1
-  elif cm.base < MAX_BASE:
-    cm.base += PAGE_SIZE
-    cm.col = 0
-    cm.row = 0
-    cm.redraw()
-    return
-  cm.draw()
-
-proc pageup(cm: Charmap) =
-  if cm.base > 0:
-    cm.base -= PAGE_SIZE
-  cm.redraw()
-
-proc pagedown(cm: Charmap) =
-  if cm.base < MAX_BASE:
-    cm.base += PAGE_SIZE
-  cm.redraw()
-
-proc searchMode(cm: Charmap) =
-  var needle = ""
-
-  proc bs() =
-    if needle.len > 0:
-      needle = needle[0..^2]
-      stdout.write("\27[D\27[K")
-
-  stdout.write("\27[2;1H\27[2K/")
-
-  while true:
-    let k = getch()
-    case k
-    of '\8', '\127': bs()
-    of '\10', '\13':
-      let found = search(needle)
-
-      cursorTo(0, 0)
-      var n = 0
-      for i in 0..<16:
-        stdout.write("\27[2K")
-        for j in 0..<16:
-          n = i * 16 + j
-          if n >= found.len:
-            break
-          stdout.write(" ", Rune(found[n]), "\t")
-        stdout.write("\n\t")
-
-      cursorTo(0, 0)
-      discard getch()
-      break
-    of '\3', '\4':
-      break
-    of 'A'..'Z', 'a'..'z':
-      needle &= k
-      stdout.write(k)
-    else:
-      discard
-
-  stdout.write("\r\27[2K")
-  cm.redraw()
-  cm.draw()
-
-
-proc getUserInput*(cm: Charmap): string =
-  var first = true
-  while true:
-    let k = getch()
-    case k
-    of '\3', '\4', 'q': # ^C or ^D or q cancels
-      result = ""
-      break
-    of '\27': # escape codes
-      case getch()
-      of '[':
-        case getch()
-        of 'A': cm.up()
-        of 'B': cm.down()
-        of 'C': cm.right()
-        of 'D': cm.left()
-        #of 'H': cm.home()
-        of '5':
-          case getch()
-          of '~': cm.pageup()
-          else: discard
-        of '6':
-          case getch()
-          of '~': cm.pagedown()
-          else: discard
-        else: discard
-      of '\27': # double escape cancels
-        result = ""
-        break
-      else: discard
-    of '/': cm.searchMode()
-    else:
-      discard
-    first = false
+proc cleanup*() =
   stdout.write("\27[24;1f")
-
-proc main() =
-  let cm = Charmap()
-  cm.redraw()
-  discard cm.getUserInput()
-
-when isMainModule:
-  main()
