@@ -9,6 +9,8 @@ import unicodedb/scripts
 import unicodedb/blocks_data
 import unicodedb/names_data
 
+import c1
+
 const PAGE_SIZE = 256
 const MAX_BASE = 0xFFF00
 
@@ -21,14 +23,27 @@ type
 func sym(rune: Rune): string =
   let i = rune.ord()
   case i
-  of 0x00..0x1f:
-    "^" & chr('@'.int + i)
-  of 0x7f:
-    "^?"
-  of 0x80..0x9f:
-    "^" & chr('`'.int + i - 0x80)
+  of 0x00..0x1F:
+    #"^" & chr('@'.int + i)
+    " " & $Rune(0x2400 + i)
+  of 0x7F:
+    " " & $Rune(0x2421)
+  of 0x80..0x9F:
+    "\27[2m" & $Rune(0x241B) & chr('@'.int + i - 0x80) & "\27[0m"
   else:
     " " & $rune
+
+func description(rune: Rune): string =
+  let i = rune.ord
+  case i
+  of 0x20:
+    Rune(i + 0x2400).name().split(" ")[2..^1].join(" ")
+  of 0x7F:
+    Rune(0x2421).name().split(" ")[2..^1].join(" ")
+  of 0x80..0x9F:
+    c1_names[i - 0x80]
+  else:
+    rune.name()
 
 func hex(v: int): string =
   if v < 0x10000:
@@ -77,7 +92,7 @@ proc describe(rune: Rune) =
     "\27[40;1m ",
     sym(rune),
     "  \27[0m ",
-    rune.name(),
+    rune.description(),
     "\27[K",
   )
 
