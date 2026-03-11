@@ -12,3 +12,4 @@ namedBin      = toTable {"main": "charmap"}
 
 requires "nim >= 2.2.0"
 requires "unicodedb >= 0.13.2"
+requires "libclip"

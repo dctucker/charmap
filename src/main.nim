@@ -1,5 +1,7 @@
 from std/terminal import getch
+import unicode
 import ./charmap
+import libclip/clipboard
 
 proc searchMode(cm: Charmap) =
   var needle = ""
@@ -11,6 +13,8 @@ proc searchMode(cm: Charmap) =
 
   proc confirm() =
     cm.search(needle)
+    cm.row = 0
+    cm.col = 0
 
   stdout.write("\27[2;1H\27[2K/")
   while true:
@@ -102,14 +106,16 @@ proc normalMode*(cm: Charmap) =
     cm.redraw()
 
   proc confirm() =
-    if not cm.searching:
-      return
-    let r = cm.rune.ord
-    cm.base = r div PAGE_SIZE * PAGE_SIZE
-    cm.row = (r mod PAGE_SIZE) div 16
-    cm.col = r mod 16
-    cm.populate()
-    cm.redraw()
+    if cm.searching:
+      let r = cm.rune.ord
+      cm.base = r div PAGE_SIZE * PAGE_SIZE
+      cm.row = (r mod PAGE_SIZE) div 16
+      cm.col = r mod 16
+      cm.populate()
+      cm.redraw()
+    else:
+      let s = $(cm.rune())
+      discard setClipboardText(s)
 
   while true:
     let k = getch()

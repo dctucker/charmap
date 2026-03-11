@@ -99,19 +99,6 @@ proc search*(cm: Charmap, needle: string) =
       Rune(-1)
   cm.searching = true
 
-  #cursorTo(0, 0)
-  #var n = 0
-  #for i in 0..<16:
-  #  stdout.write("\27[2K")
-  #  for j in 0..<16:
-  #    n = i * 16 + j
-  #    if n >= found.len:
-  #      break
-  #    stdout.write(" ", Rune(found[n]), "\t")
-  #  stdout.write("\n\t")
-
-  #cursorTo(0, 0)
-
 func rune*(cm: Charmap): Rune =
   return cm.runes[cm.row * 16 + cm.col]
 
@@ -169,4 +156,4 @@ proc redraw*(cm: Charmap) =
   stdout.write("\27[?25h")
 
 proc cleanup*() =
-  stdout.write("\27[24;1f")
+  stdout.write("\27[24;1f\27[3g")

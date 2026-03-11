@@ -5,7 +5,7 @@ import
   ],
   unicodedb/names_data
 
-proc find_words(str: string): seq[int] =
+proc find_words*(str: string): seq[int] =
   let needle = str.toUpperAscii().map(proc(x: char): int = x.ord())
 
   var i = 0
@@ -19,7 +19,7 @@ proc find_words(str: string): seq[int] =
     for j in 0..<needle.len:
       if wordsData[i + j] != needle[j]:
         found = false
-        i += j + 1
+        inc i
         break
     if found:
       result.add wordsOffsets.find(offset)
