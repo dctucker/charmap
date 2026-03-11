@@ -21,6 +21,7 @@ type
     row*: int
     col*: int
     runes*: seq[Rune]
+    searching*: bool
 
 func sym(rune: Rune): string =
   let i = rune.ord()
@@ -85,24 +86,33 @@ proc display_runes(cm: Charmap) =
 
 proc search*(cm: Charmap, needle: string) =
   let found = find_runes(needle)
+  for i in 0..<PAGE_SIZE:
+    cm.runes[i] = if i < found.len:
+      Rune(found[i])
+    else:
+      Rune(-1)
+  cm.searching = true
 
-  cursorTo(0, 0)
-  var n = 0
-  for i in 0..<16:
-    stdout.write("\27[2K")
-    for j in 0..<16:
-      n = i * 16 + j
-      if n >= found.len:
-        break
-      stdout.write(" ", Rune(found[n]), "\t")
-    stdout.write("\n\t")
+  #cursorTo(0, 0)
+  #var n = 0
+  #for i in 0..<16:
+  #  stdout.write("\27[2K")
+  #  for j in 0..<16:
+  #    n = i * 16 + j
+  #    if n >= found.len:
+  #      break
+  #    stdout.write(" ", Rune(found[n]), "\t")
+  #  stdout.write("\n\t")
 
-  cursorTo(0, 0)
+  #cursorTo(0, 0)
 
-func rune(cm: Charmap): Rune =
-  return Rune(cm.base + cm.row * 16 + cm.col)
+func rune*(cm: Charmap): Rune =
+  return cm.runes[cm.row * 16 + cm.col]
 
 proc describe(rune: Rune) =
+  stdout.write("\27[K")
+  if rune.ord < 0:
+    return
   stdout.write(
     "\27[34;4m",
     "\\u", ord(rune).hex(), "\27[0m ",
@@ -110,7 +120,6 @@ proc describe(rune: Rune) =
     sym(rune),
     "  \27[0m ",
     rune.description(),
-    "\27[K",
   )
 
 proc blocks(cm: Charmap): seq[string] =
@@ -122,6 +131,8 @@ proc blocks(cm: Charmap): seq[string] =
       result.add blockNames[i]
 
 proc draw_blocks(cm: Charmap) =
+  if cm.searching:
+    return
   stdout.write("\27[34m")
   for (i, blk) in cm.blocks.pairs:
     if i mod 2 == 1:
@@ -138,15 +149,14 @@ proc draw*(cm: Charmap) =
   cm.draw_blocks()
   cursorTo(cm.row, cm.col)
 
-proc populate(cm: Charmap, r: HSlice) =
-  cm.base = r.a div PAGE_SIZE * PAGE_SIZE
+proc populate*(cm: Charmap) =
   cm.runes = @[]
-  for i in r:
+  for i in cm.base..(cm.base+255):
     cm.runes.add Rune(i)
+  cm.searching = false
 
 proc redraw*(cm: Charmap) =
   stdout.write("\27[?25l")
-  cm.populate(cm.base..(cm.base+255))
   cm.display_runes()
   cursorTo(0,0)
   cm.draw()

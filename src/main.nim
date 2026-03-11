@@ -11,7 +11,6 @@ proc searchMode(cm: Charmap) =
 
   proc confirm() =
     cm.search(needle)
-    discard getch()
 
   stdout.write("\27[2;1H\27[2K/")
   while true:
@@ -40,6 +39,7 @@ proc normalMode*(cm: Charmap) =
     elif cm.base > 0:
       cm.row = 15
       cm.base -= PAGE_SIZE
+      cm.populate()
       cm.redraw()
       return
     cm.draw()
@@ -50,6 +50,7 @@ proc normalMode*(cm: Charmap) =
     elif cm.base < MAX_BASE:
       cm.row = 0
       cm.base += PAGE_SIZE
+      cm.populate()
       cm.redraw()
       return
     cm.draw()
@@ -64,6 +65,7 @@ proc normalMode*(cm: Charmap) =
       cm.base -= PAGE_SIZE
       cm.col = 15
       cm.row = 15
+      cm.populate()
       cm.redraw()
       return
     cm.draw()
@@ -78,6 +80,7 @@ proc normalMode*(cm: Charmap) =
       cm.base += PAGE_SIZE
       cm.col = 0
       cm.row = 0
+      cm.populate()
       cm.redraw()
       return
     cm.draw()
@@ -85,12 +88,25 @@ proc normalMode*(cm: Charmap) =
   proc pageup() =
     if cm.base > 0:
       cm.base -= PAGE_SIZE
+    cm.populate()
     cm.redraw()
 
   proc pagedown() =
     if cm.base < MAX_BASE:
       cm.base += PAGE_SIZE
+    cm.populate()
     cm.redraw()
+
+  proc confirm() =
+    if not cm.searching:
+      return
+    let r = cm.rune.ord
+    cm.base = r div PAGE_SIZE * PAGE_SIZE
+    cm.row = (r mod PAGE_SIZE) div 16
+    cm.col = r mod 16
+    cm.populate()
+    cm.redraw()
+
 
   while true:
     let k = getch()
@@ -118,6 +134,7 @@ proc normalMode*(cm: Charmap) =
       else: discard
     of '\3', '\4', 'q': # ^C or ^D or q cancels
       break
+    of '\10', '\13': confirm()
     of '/': cm.searchMode()
     else:
       discard
@@ -126,6 +143,7 @@ proc normalMode*(cm: Charmap) =
 
 proc main() =
   let cm = Charmap()
+  cm.populate()
   cm.redraw()
   cm.normalMode()
 
