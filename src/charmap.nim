@@ -66,17 +66,23 @@ proc display_runes(cm: Charmap) =
   # set tabs and return home
   for x in 1..16:
     stdout.write("\27[", $(2 + x * 4), "G\27H")
-  stdout.write("\27[H\27[34m", (cm.base shr 8).toHex(3), "\27[0m")
+  stdout.write("\27[H")
 
-  # column headers
-  stdout.write("\27[34m")
-  for x in 0..15:
-    stdout.write("\t ", x.toHex(1))
+  if not cm.searching:
+    # base
+    stdout.write("\27[34m", (cm.base shr 8).toHex(3), "\27[0m")
+
+    # column headers
+    stdout.write("\27[34m")
+    for x in 0..15:
+      stdout.write("\t ", x.toHex(1))
+
   stdout.write("\n\n")
 
   for y in 0..15:
     # row labels
-    stdout.write("\27[34m", y.toHex(1), "x", "\27[0m")
+    if not cm.searching:
+      stdout.write("\27[34m", y.toHex(1), "x", "\27[0m")
 
     # row of runes
     for x in 0..15:

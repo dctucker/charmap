@@ -36,7 +36,7 @@ proc normalMode*(cm: Charmap) =
   proc up() =
     if cm.row > 0:
       cm.row -= 1
-    elif cm.base > 0:
+    elif cm.base > 0 and not cm.searching:
       cm.row = 15
       cm.base -= PAGE_SIZE
       cm.populate()
@@ -47,7 +47,7 @@ proc normalMode*(cm: Charmap) =
   proc down() =
     if cm.row < 15:
       cm.row += 1
-    elif cm.base < MAX_BASE:
+    elif cm.base < MAX_BASE and not cm.searching:
       cm.row = 0
       cm.base += PAGE_SIZE
       cm.populate()
@@ -61,7 +61,7 @@ proc normalMode*(cm: Charmap) =
     elif cm.row > 0:
       cm.col = 15
       cm.row -= 1
-    elif cm.base > 0:
+    elif cm.base > 0 and not cm.searching:
       cm.base -= PAGE_SIZE
       cm.col = 15
       cm.row = 15
@@ -76,7 +76,7 @@ proc normalMode*(cm: Charmap) =
     elif cm.row < 15:
       cm.col = 0
       cm.row += 1
-    elif cm.base < MAX_BASE:
+    elif cm.base < MAX_BASE and not cm.searching:
       cm.base += PAGE_SIZE
       cm.col = 0
       cm.row = 0
@@ -86,12 +86,16 @@ proc normalMode*(cm: Charmap) =
     cm.draw()
 
   proc pageup() =
+    if cm.searching:
+      return
     if cm.base > 0:
       cm.base -= PAGE_SIZE
     cm.populate()
     cm.redraw()
 
   proc pagedown() =
+    if cm.searching:
+      return
     if cm.base < MAX_BASE:
       cm.base += PAGE_SIZE
     cm.populate()
@@ -106,7 +110,6 @@ proc normalMode*(cm: Charmap) =
     cm.col = r mod 16
     cm.populate()
     cm.redraw()
-
 
   while true:
     let k = getch()
