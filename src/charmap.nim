@@ -156,4 +156,4 @@ proc redraw*(cm: Charmap) =
   stdout.write("\27[?25h")
 
 proc cleanup*() =
-  stdout.write("\27[24;1f\27[3g")
+  stdout.write("\27[24;1f")
