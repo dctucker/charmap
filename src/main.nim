@@ -108,9 +108,12 @@ proc normalMode*(cm: Charmap) =
   proc confirm() =
     if cm.searching:
       let r = cm.rune.ord
-      cm.base = r div PAGE_SIZE * PAGE_SIZE
-      cm.row = (r mod PAGE_SIZE) div 16
-      cm.col = r mod 16
+      if r < 0:
+        cm.base = 0
+      else:
+          cm.base = r div PAGE_SIZE * PAGE_SIZE
+          cm.row = (r mod PAGE_SIZE) div 16
+          cm.col = r mod 16
       cm.populate()
       cm.redraw()
     else:
