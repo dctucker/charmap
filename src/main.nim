@@ -105,6 +105,13 @@ proc normalMode*(cm: Charmap) =
     cm.populate()
     cm.redraw()
 
+  proc blocks() =
+    let b = rune_block(cm.rune)
+    cm.populate_blocks()
+    cm.row = b div 16
+    cm.col = b mod 16
+    cm.redraw()
+
   proc confirm() =
     if cm.searching:
       let r = cm.rune.ord
@@ -148,6 +155,7 @@ proc normalMode*(cm: Charmap) =
       break
     of '\10', '\13': confirm()
     of '/': cm.searchMode()
+    of '\\': blocks()
     else:
       discard
 

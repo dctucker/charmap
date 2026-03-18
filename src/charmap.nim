@@ -102,6 +102,13 @@ proc search*(cm: Charmap, needle: string) =
 func rune*(cm: Charmap): Rune =
   return cm.runes[cm.row * 16 + cm.col]
 
+func rune_block*(rune: Rune): int =
+  let o = rune.ord()
+  for i in 0..<blockRanges.len:
+    let r = blockRanges[i]
+    if o <= r.b and r.a <= o:
+      return i
+
 proc describe(rune: Rune) =
   stdout.write("\27[K")
   if rune.ord < 0:
@@ -147,6 +154,18 @@ proc populate*(cm: Charmap) =
   for i in cm.base..(cm.base+255):
     cm.runes.add Rune(i)
   cm.searching = false
+
+proc populate_blocks*(cm: Charmap) =
+  cm.runes = @[]
+  for i in 0..<PAGE_SIZE:
+    var a = blockRanges[i].a
+    if i < block_avatars.len:
+      a = block_avatars[i].runeAt(0).ord
+    else:
+      while Rune(a).name == "":
+        inc a
+    cm.runes.add Rune(a)
+  cm.searching = true
 
 proc redraw*(cm: Charmap) =
   stdout.write("\27[?25l")
