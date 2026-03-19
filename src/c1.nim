@@ -109,7 +109,7 @@ let block_avatars*: seq[string] = @[
   "‡",
   "ⁿ",
   "€",
-  "\u20E0",
+  "\u20D1",
   "℅",
   "⅒",
   "↵",

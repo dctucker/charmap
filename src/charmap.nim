@@ -7,6 +7,7 @@ import
   ],
   unicodedb,
   unicodedb/blocks_data,
+  unicodedb/properties,
   ./[
     c1,
     search,
@@ -25,6 +26,10 @@ type
 
 func sym(rune: Rune): string =
   let i = rune.ord()
+  if i < 0:
+    return ""
+  if rune.combining > 0:
+    return "  " & $rune
   case i
   of 0x00..0x1F:
     #"^" & chr('@'.int + i)
@@ -35,6 +40,8 @@ func sym(rune: Rune): string =
     "\27[2m" & $Rune(0x241B) & chr('@'.int + i - 0x80) & "\27[0m"
   of 0xD800..0xDFFF:
     " " & $rune & "\b"
+  of 0xFE00..0xFE0F, 0xE0100..0xE01FF:
+    "\27[2m 🆚\27[0m"
   else:
     " " & $rune
 
