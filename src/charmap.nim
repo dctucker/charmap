@@ -33,6 +33,8 @@ func sym(rune: Rune): string =
     " " & $Rune(0x2421)
   of 0x80..0x9F:
     "\27[2m" & $Rune(0x241B) & chr('@'.int + i - 0x80) & "\27[0m"
+  of 0xD800..0xDFFF:
+    " " & $rune & "\b"
   else:
     " " & $rune
 
@@ -88,6 +90,7 @@ proc display_runes(cm: Charmap) =
     for x in 0..15:
       let rune = cm.runes[x + 16 * y]
       stdout.write("\t", sym(rune))
+      #stdout.write("\27[", $(2 + (x + 1) * 4), "G", sym(rune))
     stdout.write("\n")
 
 proc search*(cm: Charmap, needle: string) =
